@@ -2,20 +2,21 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>英語單字測驗</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>英語單字測驗 - Lesson 3 & 4</title>
     
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- 引入 React 和 ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     
+    <!-- 引入 Babel 用於解析 JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
+    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <script src="https://unpkg.com/lucide-react/dist/umd/lucide-react.js"></script>
 
+    <!-- 自定義樣式 (用於翻牌動畫) -->
     <style>
-        /* 額外的 CSS 設定，確保卡片翻轉效果平順 */
         .perspective-1000 {
             perspective: 1000px;
         }
@@ -24,591 +25,603 @@
         }
         .backface-hidden {
             backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
         }
         .rotate-y-180 {
             transform: rotateY(180deg);
         }
+        /* 隱藏捲軸但保持功能 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
     </style>
 </head>
-<body>
+<body class="bg-slate-50">
     <div id="root"></div>
 
     <script type="text/babel">
-        // 取得 React 工具
         const { useState, useEffect } = React;
-        
-        // 取得圖標 (從 lucide 全域變數)
-        const { BookOpen, Brain, RotateCcw, Volume2, ArrowRight, ArrowLeft, Trophy, Check, X, Home, ChevronRight, Library, List, Layers } = lucide;
 
-        // --- 資料庫 (維持不變) ---
+        // --- 圖示組件 (Inline SVG icons) ---
+        const Icon = ({ children, size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {children}
+            </svg>
+        );
+
+        const BookOpen = (props) => <Icon {...props}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></Icon>;
+        const Brain = (props) => <Icon {...props}><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></Icon>;
+        const RotateCcw = (props) => <Icon {...props}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></Icon>;
+        const Volume2 = (props) => <Icon {...props}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></Icon>;
+        const ArrowRight = (props) => <Icon {...props}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></Icon>;
+        const ArrowLeft = (props) => <Icon {...props}><path d="M19 12H5"/><path d="m12 5-7 7 7 7"/></Icon>;
+        const Trophy = (props) => <Icon {...props}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></Icon>;
+        const Check = (props) => <Icon {...props}><polyline points="20 6 9 17 4 12"/></Icon>;
+        const X = (props) => <Icon {...props}><path d="M18 6 6 18"/><path d="m6 6 18 18"/></Icon>;
+        const Home = (props) => <Icon {...props}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></Icon>;
+        const ChevronRight = (props) => <Icon {...props}><path d="m9 18 6-6-6-6"/></Icon>;
+        const Library = (props) => <Icon {...props}><path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/></Icon>;
+        const ListIcon = (props) => <Icon {...props}><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></Icon>;
+        const Layers = (props) => <Icon {...props}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></Icon>;
+
+        // --- 資料庫 ---
         const lessonsData = {
-          3: {
-            title: "Lesson 3",
-            subtitle: "Please Bring Your Favorite Dish",
-            words: [
-              { id: 1, english: "please", chinese: "請", part: "感" },
-              { id: 2, english: "put", chinese: "放", part: "動" },
-              { id: 3, english: "dish", chinese: "菜餚", part: "名" },
-              { id: 4, english: "let's...", chinese: "讓我們...", part: "片" },
-              { id: 5, english: "try", chinese: "嘗試", part: "動" },
-              { id: 6, english: "beef noodles", chinese: "牛肉麵", part: "名" },
-              { id: 7, english: "use", chinese: "使用", part: "動" },
-              { id: 8, english: "chopsticks", chinese: "筷子", part: "名" },
-              { id: 9, english: "delicious", chinese: "美味的", part: "形" },
-              { id: 10, english: "guys", chinese: "大家", part: "名" },
-              { id: 11, english: "just", chinese: "就，只是", part: "副" },
-              { id: 12, english: "hand", chinese: "手", part: "名" },
-              { id: 13, english: "bring", chinese: "帶", part: "動" },
-              { id: 14, english: "talk", chinese: "說話", part: "動" },
-              { id: 15, english: "party", chinese: "派對", part: "名" },
-              { id: 16, english: "invite", chinese: "邀請", part: "動" },
-              { id: 17, english: "join", chinese: "參加", part: "動" },
-              { id: 18, english: "glass", chinese: "玻璃杯", part: "名" },
-              { id: 19, english: "bowl", chinese: "碗", part: "名" },
-              { id: 20, english: "spoon", chinese: "湯匙", part: "名" },
-              { id: 21, english: "menu", chinese: "菜單", part: "名" },
-              { id: 22, english: "fork", chinese: "叉子", part: "名" },
-              { id: 23, english: "plate", chinese: "盤子", part: "名" },
-              { id: 24, english: "knife", chinese: "刀子", part: "名" },
-              { id: 25, english: "e-mail", chinese: "電子郵件", part: "名" },
-              { id: 26, english: "everyone", chinese: "每個人", part: "代" },
-              { id: 27, english: "house", chinese: "房子", part: "名" },
-              { id: 28, english: "wear", chinese: "穿", part: "動" },
-              { id: 29, english: "something", chinese: "某樣東西", part: "代" },
-              { id: 30, english: "country", chinese: "國家", part: "名" },
-              { id: 31, english: "any", chinese: "任何的", part: "形" },
-              { id: 32, english: "fun", chinese: "樂趣", part: "名" },
-              { id: 33, english: "Halloween", chinese: "萬聖節前夕", part: "名" },
-              { id: 34, english: "around the corner", chinese: "即將到來", part: "片" },
-              { id: 35, english: "plan", chinese: "計畫", part: "動" },
-            ]
-          },
-          4: {
-            title: "Lesson 4",
-            subtitle: "There Are Some Animals in the Game",
-            words: [
-              { id: 1, english: "animal", chinese: "動物", part: "名" },
-              { id: 2, english: "surprise", chinese: "驚喜", part: "名" },
-              { id: 3, english: "love", chinese: "愛", part: "動" },
-              { id: 4, english: "gift", chinese: "禮物", part: "名" },
-              { id: 5, english: "hunt", chinese: "尋找", part: "名" },
-              { id: 6, english: "inside", chinese: "在...裡面", part: "介" },
-              { id: 7, english: "lunch", chinese: "午餐", part: "名" },
-              { id: 8, english: "again", chinese: "再一次", part: "副" },
-              { id: 9, english: "pin", chinese: "別針", part: "名" },
-              { id: 10, english: "bamboo", chinese: "竹子", part: "名" },
-              { id: 11, english: "so", chinese: "非常地", part: "副" },
-              { id: 12, english: "kind", chinese: "體貼的", part: "形" },
-              { id: 13, english: "jacket", chinese: "夾克", part: "名" },
-              { id: 14, english: "Thanksgiving", chinese: "感恩節", part: "名" },
-              { id: 15, english: "bathroom", chinese: "浴室", part: "名" },
-              { id: 16, english: "bedroom", chinese: "臥室", part: "名" },
-              { id: 17, english: "living room", chinese: "客廳", part: "名" },
-              { id: 18, english: "window", chinese: "窗戶", part: "名" },
-              { id: 19, english: "sofa", chinese: "長沙發", part: "名" },
-              { id: 20, english: "dining room", chinese: "飯廳", part: "名" },
-              { id: 21, english: "kitchen", chinese: "廚房", part: "名" },
-              { id: 22, english: "swimming pool", chinese: "游泳池", part: "名" },
-              { id: 23, english: "garden", chinese: "花園", part: "名" },
-              { id: 24, english: "garage", chinese: "車庫", part: "名" },
-              { id: 25, english: "in front of", chinese: "在...前面", part: "片" },
-              { id: 26, english: "behind", chinese: "在...後面", part: "介" },
-              { id: 27, english: "between", chinese: "在...之間", part: "介" },
-              { id: 28, english: "next to", chinese: "在...旁邊", part: "介" },
-              { id: 29, english: "team", chinese: "(團)隊", part: "名" },
-              { id: 30, english: "panda", chinese: "熊貓", part: "名" },
-              { id: 31, english: "hard-working", chinese: "認真的", part: "形" },
-              { id: 32, english: "smart", chinese: "聰明的", part: "形" },
-              { id: 33, english: "area", chinese: "區域", part: "名" },
-              { id: 34, english: "pocket", chinese: "口袋", part: "名" },
-              { id: 35, english: "spider", chinese: "蜘蛛", part: "名" },
-              { id: 36, english: "busy", chinese: "忙碌的", part: "形" },
-              { id: 37, english: "water", chinese: "水", part: "名" },
-              { id: 38, english: "bottle", chinese: "瓶子", part: "名" },
-              { id: 39, english: "near", chinese: "在...附近", part: "介" },
-              { id: 40, english: "shoulder", chinese: "肩膀", part: "名" },
-              { id: 41, english: "player", chinese: "運動員", part: "名" },
-              { id: 42, english: "cheer", chinese: "歡呼；鼓舞", part: "動" },
-            ]
-          }
+            3: {
+                title: "Lesson 3",
+                subtitle: "Please Bring Your Favorite Dish",
+                words: [
+                // Dialogue
+                { id: 1, english: "please", chinese: "請", part: "感" },
+                { id: 2, english: "put", chinese: "放", part: "動" },
+                { id: 3, english: "dish", chinese: "菜餚", part: "名" },
+                { id: 4, english: "let's...", chinese: "讓我們...", part: "片" },
+                { id: 5, english: "try", chinese: "嘗試", part: "動" },
+                { id: 6, english: "beef noodles", chinese: "牛肉麵", part: "名" },
+                { id: 7, english: "use", chinese: "使用", part: "動" },
+                { id: 8, english: "chopsticks", chinese: "筷子", part: "名" },
+                { id: 9, english: "delicious", chinese: "美味的", part: "形" },
+                { id: 10, english: "guys", chinese: "大家", part: "名" },
+                { id: 11, english: "just", chinese: "就，只是", part: "副" },
+                { id: 12, english: "hand", chinese: "手", part: "名" },
+                { id: 13, english: "bring", chinese: "帶", part: "動" },
+                // Word Power
+                { id: 14, english: "talk", chinese: "說話", part: "動" },
+                { id: 15, english: "party", chinese: "派對", part: "名" },
+                { id: 16, english: "invite", chinese: "邀請", part: "動" },
+                { id: 17, english: "join", chinese: "參加", part: "動" },
+                { id: 18, english: "glass", chinese: "玻璃杯", part: "名" },
+                { id: 19, english: "bowl", chinese: "碗", part: "名" },
+                { id: 20, english: "spoon", chinese: "湯匙", part: "名" },
+                { id: 21, english: "menu", chinese: "菜單", part: "名" },
+                { id: 22, english: "fork", chinese: "叉子", part: "名" },
+                { id: 23, english: "plate", chinese: "盤子", part: "名" },
+                { id: 24, english: "knife", chinese: "刀子", part: "名" },
+                // Reading
+                { id: 25, english: "e-mail", chinese: "電子郵件", part: "名" },
+                { id: 26, english: "everyone", chinese: "每個人", part: "代" },
+                { id: 27, english: "house", chinese: "房子", part: "名" },
+                { id: 28, english: "wear", chinese: "穿", part: "動" },
+                { id: 29, english: "something", chinese: "某樣東西", part: "代" },
+                { id: 30, english: "country", chinese: "國家", part: "名" },
+                { id: 31, english: "any", chinese: "任何的", part: "形" },
+                { id: 32, english: "fun", chinese: "樂趣", part: "名" },
+                { id: 33, english: "Halloween", chinese: "萬聖節前夕", part: "名" },
+                { id: 34, english: "around the corner", chinese: "即將到來", part: "片" },
+                { id: 35, english: "plan", chinese: "計畫", part: "動" },
+                ]
+            },
+            4: {
+                title: "Lesson 4",
+                subtitle: "There Are Some Animals in the Game",
+                words: [
+                // Dialogue
+                { id: 1, english: "animal", chinese: "動物", part: "名" },
+                { id: 2, english: "surprise", chinese: "驚喜", part: "名" },
+                { id: 3, english: "love", chinese: "愛", part: "動" },
+                { id: 4, english: "gift", chinese: "禮物", part: "名" },
+                { id: 5, english: "hunt", chinese: "尋找", part: "名" },
+                { id: 6, english: "inside", chinese: "在...裡面", part: "介" },
+                { id: 7, english: "lunch", chinese: "午餐", part: "名" },
+                { id: 8, english: "again", chinese: "再一次", part: "副" },
+                { id: 9, english: "pin", chinese: "別針", part: "名" },
+                { id: 10, english: "bamboo", chinese: "竹子", part: "名" },
+                { id: 11, english: "so", chinese: "非常地", part: "副" },
+                { id: 12, english: "kind", chinese: "體貼的", part: "形" },
+                { id: 13, english: "jacket", chinese: "夾克", part: "名" },
+                { id: 14, english: "Thanksgiving", chinese: "感恩節", part: "名" },
+                // Word Power
+                { id: 15, english: "bathroom", chinese: "浴室", part: "名" },
+                { id: 16, english: "bedroom", chinese: "臥室", part: "名" },
+                { id: 17, english: "living room", chinese: "客廳", part: "名" },
+                { id: 18, english: "window", chinese: "窗戶", part: "名" },
+                { id: 19, english: "sofa", chinese: "長沙發", part: "名" },
+                { id: 20, english: "dining room", chinese: "飯廳", part: "名" },
+                { id: 21, english: "kitchen", chinese: "廚房", part: "名" },
+                { id: 22, english: "swimming pool", chinese: "游泳池", part: "名" },
+                { id: 23, english: "garden", chinese: "花園", part: "名" },
+                { id: 24, english: "garage", chinese: "車庫", part: "名" },
+                { id: 25, english: "in front of", chinese: "在...前面", part: "片" },
+                { id: 26, english: "behind", chinese: "在...後面", part: "介" },
+                { id: 27, english: "between", chinese: "在...之間", part: "介" },
+                { id: 28, english: "next to", chinese: "在...旁邊", part: "介" },
+                // Reading
+                { id: 29, english: "team", chinese: "(團)隊", part: "名" },
+                { id: 30, english: "panda", chinese: "熊貓", part: "名" },
+                { id: 31, english: "hard-working", chinese: "認真的", part: "形" },
+                { id: 32, english: "smart", chinese: "聰明的", part: "形" },
+                { id: 33, english: "area", chinese: "區域", part: "名" },
+                { id: 34, english: "pocket", chinese: "口袋", part: "名" },
+                { id: 35, english: "spider", chinese: "蜘蛛", part: "名" },
+                { id: 36, english: "busy", chinese: "忙碌的", part: "形" },
+                { id: 37, english: "water", chinese: "水", part: "名" },
+                { id: 38, english: "bottle", chinese: "瓶子", part: "名" },
+                { id: 39, english: "near", chinese: "在...附近", part: "介" },
+                { id: 40, english: "shoulder", chinese: "肩膀", part: "名" },
+                { id: 41, english: "player", chinese: "運動員", part: "名" },
+                { id: 42, english: "cheer", chinese: "歡呼；鼓舞", part: "動" },
+                ]
+            }
         };
 
-        // --- 主程式 ---
-
-        const App = () => {
-          const [currentLessonId, setCurrentLessonId] = useState(null); 
-          const [mode, setMode] = useState('menu'); 
-
-          const goHome = () => {
-            setMode('menu');
-            setCurrentLessonId(null);
-          };
-
-          const goMenu = () => {
-            setMode('menu');
-          };
-
-          return (
-            <div className="min-h-[100dvh] bg-slate-50 text-slate-800 font-sans selection:bg-emerald-100 flex justify-center">
-              <div className="w-full max-w-xl bg-white shadow-2xl overflow-hidden flex flex-col min-h-[100dvh] border-x border-slate-100">
-                
-                {/* Header */}
-                <header className="bg-emerald-600 text-white p-4 shadow-md z-10 sticky top-0 shrink-0">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {currentLessonId ? (
-                        <button onClick={goHome} className="hover:bg-emerald-700 p-2 rounded-lg transition-colors active:scale-95">
-                          <Library size={24} />
-                        </button>
-                      ) : (
-                         <BookOpen size={24} className="ml-1"/>
-                      )}
-                      
-                      <h1 className="text-lg font-bold truncate max-w-[200px] sm:max-w-[300px]">
-                        {currentLessonId ? lessonsData[currentLessonId].title : "英語單字測驗"}
-                      </h1>
-                    </div>
-                    
-                    {currentLessonId && mode !== 'menu' && (
-                      <button 
-                        onClick={goMenu}
-                        className="p-2 hover:bg-emerald-700 rounded-full transition-colors active:scale-95"
-                        title="回到單元選單"
-                      >
-                        <Home size={22} />
-                      </button>
-                    )}
-                  </div>
-                  {currentLessonId && (
-                    <p className="text-emerald-100 text-xs mt-1 truncate pl-11">
-                      {lessonsData[currentLessonId].subtitle}
-                    </p>
-                  )}
-                </header>
-
-                {/* Main Content Area */}
-                <main className="flex-1 flex flex-col relative overflow-hidden bg-slate-50/50">
-                  {!currentLessonId ? (
-                    <LessonSelector onSelect={setCurrentLessonId} />
-                  ) : (
-                    <>
-                      {mode === 'menu' && <Menu setMode={setMode} lessonData={lessonsData[currentLessonId]} />}
-                      {mode === 'flashcards' && <Flashcards vocabularyList={lessonsData[currentLessonId].words} />}
-                      {mode === 'quiz' && <Quiz setMode={setMode} vocabularyList={lessonsData[currentLessonId].words} />}
-                    </>
-                  )}
-                </main>
-
-              </div>
-            </div>
-          );
-        };
-
-        // --- Sub-Components ---
+        // --- 元件 ---
 
         const LessonSelector = ({ onSelect }) => (
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 gap-4 animate-[fadeIn_0.5s_ease-out]">
-            <div className="max-w-md mx-auto w-full">
-              <h2 className="text-2xl font-bold text-slate-700 mb-2 text-center mt-4">選擇課程</h2>
-              <p className="text-slate-500 text-center mb-6">請選擇你要練習的單元</p>
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="max-w-md mx-auto w-full">
+                    <h2 className="text-2xl font-bold text-slate-700 mb-2 text-center mt-4">選擇課程</h2>
+                    <p className="text-slate-500 text-center mb-6">請選擇你要練習的單元</p>
 
-              <div className="grid gap-4">
-                {Object.entries(lessonsData).map(([id, data]) => (
-                  <button
-                    key={id}
-                    onClick={() => onSelect(id)}
-                    className="w-full bg-white border-2 border-emerald-100 hover:border-emerald-500 hover:shadow-lg text-left p-5 rounded-2xl transition-all group active:scale-[0.98]"
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <div className="text-emerald-600 font-bold text-lg mb-1">{data.title}</div>
-                        <div className="text-slate-500 text-sm font-medium">{data.subtitle}</div>
-                        <div className="text-slate-400 text-xs mt-2 bg-slate-100 inline-block px-2 py-1 rounded-full">
-                          {data.words.length} 個單字
-                        </div>
-                      </div>
-                      <ChevronRight className="text-emerald-300 group-hover:text-emerald-600 transition-colors" size={24} />
+                    <div className="grid gap-4">
+                        {Object.entries(lessonsData).map(([id, data]) => (
+                        <button
+                            key={id}
+                            onClick={() => onSelect(id)}
+                            className="w-full bg-white border-2 border-emerald-100 hover:border-emerald-500 hover:shadow-lg text-left p-5 rounded-2xl transition-all group active:scale-[0.98]"
+                        >
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <div className="text-emerald-600 font-bold text-lg mb-1">{data.title}</div>
+                                    <div className="text-slate-500 text-sm font-medium">{data.subtitle}</div>
+                                    <div className="text-slate-400 text-xs mt-2 bg-slate-100 inline-block px-2 py-1 rounded-full">
+                                    {data.words.length} 個單字
+                                    </div>
+                                </div>
+                                <ChevronRight className="text-emerald-300 group-hover:text-emerald-600 transition-colors" size={24} />
+                            </div>
+                        </button>
+                        ))}
                     </div>
-                  </button>
-                ))}
-              </div>
+                </div>
             </div>
-          </div>
         );
 
         const Menu = ({ setMode, lessonData }) => (
-          <div className="flex-1 overflow-y-auto flex flex-col justify-center items-center p-6 gap-6 animate-[fadeIn_0.5s_ease-out]">
-            <div className="w-full max-w-sm">
-              <div className="text-center mb-8">
-                <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600 shadow-inner">
-                  <BookOpen size={48} />
+            <div className="flex-1 overflow-y-auto flex flex-col justify-center items-center p-6 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="w-full max-w-sm">
+                    <div className="text-center mb-8">
+                        <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600 shadow-inner">
+                            <BookOpen size={48} />
+                        </div>
+                        <h2 className="text-2xl font-bold text-slate-800">{lessonData.title}</h2>
+                        <p className="text-slate-500 text-sm mt-2">選擇練習模式</p>
+                    </div>
+
+                    <div className="space-y-4">
+                        <button
+                            onClick={() => setMode('flashcards')}
+                            className="w-full bg-white border-2 border-emerald-500 hover:bg-emerald-50 text-emerald-700 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center gap-4 group active:scale-[0.98]"
+                        >
+                            <div className="bg-emerald-100 p-3 rounded-full group-hover:scale-110 transition-transform">
+                                <Layers size={24} />
+                            </div>
+                            <div className="text-left flex-1">
+                                <div className="font-bold text-lg">單字卡 & 列表</div>
+                                <div className="text-xs opacity-80">瀏覽單字，翻牌記憶</div>
+                            </div>
+                            <ArrowRight className="text-emerald-300 group-hover:text-emerald-600 transition-colors" size={24} />
+                        </button>
+
+                        <button
+                            onClick={() => setMode('quiz')}
+                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white p-5 rounded-2xl shadow-md hover:shadow-lg transition-all flex items-center gap-4 group active:scale-[0.98]"
+                        >
+                            <div className="bg-white/20 p-3 rounded-full group-hover:scale-110 transition-transform">
+                                <Brain size={24} />
+                            </div>
+                            <div className="text-left flex-1">
+                                <div className="font-bold text-lg">測驗模式</div>
+                                <div className="text-xs opacity-90">隨機十題，挑戰滿分</div>
+                            </div>
+                            <ArrowRight className="text-white/50 group-hover:text-white transition-colors" size={24} />
+                        </button>
+                    </div>
                 </div>
-                <h2 className="text-2xl font-bold text-slate-800">{lessonData.title}</h2>
-                <p className="text-slate-500 text-sm mt-2">選擇練習模式</p>
-              </div>
-
-              <div className="space-y-4">
-                <button
-                  onClick={() => setMode('flashcards')}
-                  className="w-full bg-white border-2 border-emerald-500 hover:bg-emerald-50 text-emerald-700 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center gap-4 group active:scale-[0.98]"
-                >
-                  <div className="bg-emerald-100 p-3 rounded-full group-hover:scale-110 transition-transform">
-                    <Layers size={24} />
-                  </div>
-                  <div className="text-left flex-1">
-                    <div className="font-bold text-lg">單字卡 & 列表</div>
-                    <div className="text-xs opacity-80">瀏覽單字，翻牌記憶</div>
-                  </div>
-                  <ArrowRight className="text-emerald-300 group-hover:text-emerald-600 transition-colors" size={24} />
-                </button>
-
-                <button
-                  onClick={() => setMode('quiz')}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white p-5 rounded-2xl shadow-md hover:shadow-lg transition-all flex items-center gap-4 group active:scale-[0.98]"
-                >
-                  <div className="bg-white/20 p-3 rounded-full group-hover:scale-110 transition-transform">
-                    <Brain size={24} />
-                  </div>
-                  <div className="text-left flex-1">
-                    <div className="font-bold text-lg">測驗模式</div>
-                    <div className="text-xs opacity-90">隨機十題，挑戰滿分</div>
-                  </div>
-                  <ArrowRight className="text-white/50 group-hover:text-white transition-colors" size={24} />
-                </button>
-              </div>
             </div>
-          </div>
         );
 
         const Flashcards = ({ vocabularyList }) => {
-          const [viewMode, setViewMode] = useState('card');
-          
-          const [currentIndex, setCurrentIndex] = useState(0);
-          const [isFlipped, setIsFlipped] = useState(false);
+            const [viewMode, setViewMode] = useState('card'); 
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [isFlipped, setIsFlipped] = useState(false);
 
-          const currentCard = vocabularyList[currentIndex];
+            const currentCard = vocabularyList[currentIndex];
 
-          const speak = (text) => {
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US';
-            utterance.rate = 0.8;
-            window.speechSynthesis.speak(utterance);
-          };
+            const speak = (text) => {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.8;
+                window.speechSynthesis.speak(utterance);
+            };
 
-          useEffect(() => {
-            if (viewMode === 'card' && currentCard) {
-              const timer = setTimeout(() => {
-                speak(currentCard.english);
-              }, 300);
-              return () => clearTimeout(timer);
-            }
-          }, [currentIndex, viewMode, currentCard]);
+            useEffect(() => {
+                if (viewMode === 'card' && currentCard) {
+                    const timer = setTimeout(() => {
+                        speak(currentCard.english);
+                    }, 100);
+                    return () => clearTimeout(timer);
+                }
+            }, [currentIndex, viewMode, currentCard]);
 
-          const nextCard = () => {
-            setIsFlipped(false);
-            setCurrentIndex((prev) => (prev + 1) % vocabularyList.length);
-          };
+            const nextCard = () => {
+                setIsFlipped(false);
+                setCurrentIndex((prev) => (prev + 1) % vocabularyList.length);
+            };
 
-          const prevCard = () => {
-            setIsFlipped(false);
-            setCurrentIndex((prev) => (prev - 1 + vocabularyList.length) % vocabularyList.length);
-          };
+            const prevCard = () => {
+                setIsFlipped(false);
+                setCurrentIndex((prev) => (prev - 1 + vocabularyList.length) % vocabularyList.length);
+            };
 
-          return (
-            <div className="flex-1 flex flex-col h-full animate-[fadeIn_0.5s_ease-out]">
-              
-              {/* Top Toolbar */}
-              <div className="px-6 py-4 bg-white border-b border-slate-100 flex justify-between items-center shrink-0">
-                <span className="text-sm font-bold text-slate-500">
-                  {viewMode === 'card' ? `Card ${currentIndex + 1}/${vocabularyList.length}` : `All Words (${vocabularyList.length})`}
-                </span>
-                <div className="flex bg-slate-100 p-1 rounded-lg">
-                  <button 
-                    onClick={() => setViewMode('card')}
-                    className={`p-2 rounded-md transition-all flex items-center gap-1 text-sm font-medium ${viewMode === 'card' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                  >
-                    <Layers size={16} /> 卡片
-                  </button>
-                  <button 
-                    onClick={() => setViewMode('list')}
-                    className={`p-2 rounded-md transition-all flex items-center gap-1 text-sm font-medium ${viewMode === 'list' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                  >
-                    <List size={16} /> 列表
-                  </button>
-                </div>
-              </div>
-
-              {/* Content Area */}
-              <div className="flex-1 overflow-y-auto relative bg-slate-50/50">
-                
-                {viewMode === 'card' ? (
-                  // --- Card View Mode ---
-                  <div className="h-full flex flex-col p-6">
-                    {/* Progress Bar */}
-                    <div className="w-full bg-slate-200 h-1.5 rounded-full mb-6 shrink-0">
-                      <div 
-                        className="bg-emerald-500 h-1.5 rounded-full transition-all duration-300" 
-                        style={{ width: `${((currentIndex + 1) / vocabularyList.length) * 100}%` }}
-                      />
-                    </div>
-
-                    {/* Flip Card Container */}
-                    <div className="flex-1 flex items-center justify-center min-h-[300px] py-4 perspective-1000">
-                      <div 
-                        className={`relative w-full max-w-sm aspect-[3/4] cursor-pointer transition-all duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}
-                        onClick={() => setIsFlipped(!isFlipped)}
-                      >
-                        {/* Front (English) */}
-                        <div className="absolute inset-0 bg-white border-2 border-slate-100 shadow-xl rounded-3xl flex flex-col items-center justify-center backface-hidden p-6 hover:border-emerald-200 transition-colors">
-                          <h2 className="text-4xl sm:text-5xl font-bold text-slate-800 text-center break-words w-full mb-8 leading-tight">{currentCard.english}</h2>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); speak(currentCard.english); }}
-                            className="p-4 bg-emerald-50 rounded-full text-emerald-600 hover:bg-emerald-100 hover:scale-110 transition-all active:scale-95 shadow-sm"
-                            title="播放發音"
-                          >
-                            <Volume2 size={36} />
-                          </button>
-                          <p className="absolute bottom-8 text-slate-300 text-sm animate-pulse">點擊翻面</p>
+            return (
+                <div className="flex-1 flex flex-col h-full animate-in fade-in duration-500">
+                    <div className="px-6 py-4 bg-white border-b border-slate-100 flex justify-between items-center shrink-0">
+                        <span className="text-sm font-bold text-slate-500">
+                        {viewMode === 'card' ? `Card ${currentIndex + 1}/${vocabularyList.length}` : `All Words (${vocabularyList.length})`}
+                        </span>
+                        <div className="flex bg-slate-100 p-1 rounded-lg">
+                            <button 
+                                onClick={() => setViewMode('card')}
+                                className={`p-2 rounded-md transition-all flex items-center gap-1 text-sm font-medium ${viewMode === 'card' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                <Layers size={16} /> 卡片
+                            </button>
+                            <button 
+                                onClick={() => setViewMode('list')}
+                                className={`p-2 rounded-md transition-all flex items-center gap-1 text-sm font-medium ${viewMode === 'list' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                <ListIcon size={16} /> 列表
+                            </button>
                         </div>
+                    </div>
 
-                        {/* Back (Chinese + Part of Speech) */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 to-white border-2 border-emerald-100 shadow-xl rounded-3xl flex flex-col items-center justify-center backface-hidden rotate-y-180 p-6">
-                          <div className="mb-6">
-                            {currentCard.part && (
-                              <span className="inline-block text-xl font-bold bg-emerald-600 text-white px-4 py-2 rounded-xl shadow-md">
-                                {currentCard.part}
-                              </span>
-                            )}
-                          </div>
-                          <h2 className="text-4xl sm:text-5xl font-bold text-emerald-900 text-center leading-tight">{currentCard.chinese}</h2>
+                    <div className="flex-1 overflow-y-auto relative bg-slate-50/50">
+                        {viewMode === 'card' ? (
+                        <div className="h-full flex flex-col p-6">
+                            <div className="w-full bg-slate-200 h-1.5 rounded-full mb-6 shrink-0">
+                                <div 
+                                    className="bg-emerald-500 h-1.5 rounded-full transition-all duration-300" 
+                                    style={{ width: `${((currentIndex + 1) / vocabularyList.length) * 100}%` }}
+                                />
+                            </div>
+
+                            <div className="flex-1 flex items-center justify-center min-h-[300px] py-4 perspective-1000">
+                                <div 
+                                    className={`relative w-full max-w-sm aspect-[3/4] cursor-pointer transition-all duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}
+                                    onClick={() => setIsFlipped(!isFlipped)}
+                                >
+                                    <div className="absolute inset-0 bg-white border-2 border-slate-100 shadow-xl rounded-3xl flex flex-col items-center justify-center backface-hidden p-6 hover:border-emerald-200 transition-colors">
+                                        <h2 className="text-4xl sm:text-5xl font-bold text-slate-800 text-center break-words w-full mb-8 leading-tight">{currentCard.english}</h2>
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); speak(currentCard.english); }}
+                                            className="p-4 bg-emerald-50 rounded-full text-emerald-600 hover:bg-emerald-100 hover:scale-110 transition-all active:scale-95 shadow-sm"
+                                            title="播放發音"
+                                        >
+                                            <Volume2 size={36} />
+                                        </button>
+                                        <p className="absolute bottom-8 text-slate-300 text-sm animate-pulse">點擊翻面</p>
+                                    </div>
+
+                                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 to-white border-2 border-emerald-100 shadow-xl rounded-3xl flex flex-col items-center justify-center backface-hidden rotate-y-180 p-6">
+                                        <div className="mb-6">
+                                            {currentCard.part && (
+                                            <span className="inline-block text-xl font-bold bg-emerald-600 text-white px-4 py-2 rounded-xl shadow-md">
+                                                {currentCard.part}
+                                            </span>
+                                            )}
+                                        </div>
+                                        <h2 className="text-4xl sm:text-5xl font-bold text-emerald-900 text-center leading-tight">{currentCard.chinese}</h2>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-between items-center mt-auto pt-6 px-2 sm:px-8 pb-4 shrink-0">
+                                <button 
+                                    onClick={prevCard}
+                                    className="p-4 rounded-full bg-white border border-slate-200 text-slate-600 shadow-sm hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all"
+                                >
+                                    <ArrowLeft size={24} />
+                                </button>
+                                
+                                <button 
+                                    onClick={() => {
+                                    const randomIdx = Math.floor(Math.random() * vocabularyList.length);
+                                    setCurrentIndex(randomIdx);
+                                    setIsFlipped(false);
+                                    }}
+                                    className="flex flex-col items-center text-xs text-slate-400 hover:text-emerald-600 transition-colors active:scale-95 p-2"
+                                >
+                                    <RotateCcw size={20} className="mb-1" />
+                                    隨機
+                                </button>
+
+                                <button 
+                                    onClick={nextCard}
+                                    className="p-4 rounded-full bg-emerald-600 text-white shadow-md shadow-emerald-200 hover:bg-emerald-700 hover:scale-105 active:scale-95 transition-all"
+                                >
+                                    <ArrowRight size={24} />
+                                </button>
+                            </div>
                         </div>
-                      </div>
-                    </div>
+                        ) : (
+                        <div className="p-4 sm:p-6 pb-20">
+                            <div className="space-y-3">
+                                {vocabularyList.map((word, index) => (
+                                    <div 
+                                    key={word.id} 
+                                    className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between hover:border-emerald-200 hover:shadow-md transition-all"
+                                    >
+                                        <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-mono text-slate-300 w-6">{(index + 1).toString().padStart(2, '0')}</span>
+                                                <h3 className="text-lg font-bold text-slate-800">{word.english}</h3>
+                                            </div>
+                                            
+                                            <div className="flex items-center gap-2 mt-1 sm:mt-0">
+                                                {word.part && (
+                                                    <span className="text-xs font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">
+                                                    {word.part}
+                                                    </span>
+                                                )}
+                                                <span className="text-emerald-700 font-medium">{word.chinese}</span>
+                                            </div>
+                                        </div>
 
-                    {/* Controls */}
-                    <div className="flex justify-between items-center mt-auto pt-6 px-2 sm:px-8 pb-4 shrink-0">
-                      <button 
-                        onClick={prevCard}
-                        className="p-4 rounded-full bg-white border border-slate-200 text-slate-600 shadow-sm hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all"
-                      >
-                        <ArrowLeft size={24} />
-                      </button>
-                      
-                      <button 
-                        onClick={() => {
-                          const randomIdx = Math.floor(Math.random() * vocabularyList.length);
-                          setCurrentIndex(randomIdx);
-                          setIsFlipped(false);
-                        }}
-                        className="flex flex-col items-center text-xs text-slate-400 hover:text-emerald-600 transition-colors active:scale-95 p-2"
-                      >
-                        <RotateCcw size={20} className="mb-1" />
-                        隨機
-                      </button>
-
-                      <button 
-                        onClick={nextCard}
-                        className="p-4 rounded-full bg-emerald-600 text-white shadow-md shadow-emerald-200 hover:bg-emerald-700 hover:scale-105 active:scale-95 transition-all"
-                      >
-                        <ArrowRight size={24} />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  // --- List View Mode ---
-                  <div className="p-4 sm:p-6 pb-20">
-                    <div className="space-y-3">
-                      {vocabularyList.map((word, index) => (
-                        <div 
-                          key={word.id} 
-                          className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between hover:border-emerald-200 hover:shadow-md transition-all"
-                        >
-                          <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                            <div className="flex items-center gap-2">
-                               <span className="text-xs font-mono text-slate-300 w-6">{(index + 1).toString().padStart(2, '0')}</span>
-                               <h3 className="text-lg font-bold text-slate-800">{word.english}</h3>
+                                        <button 
+                                            onClick={() => speak(word.english)}
+                                            className="ml-4 p-2 text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors active:scale-90"
+                                        >
+                                            <Volume2 size={20} />
+                                        </button>
+                                    </div>
+                                ))}
                             </div>
                             
-                            <div className="flex items-center gap-2 mt-1 sm:mt-0">
-                              {word.part && (
-                                <span className="text-xs font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">
-                                  {word.part}
-                                </span>
-                              )}
-                              <span className="text-emerald-700 font-medium">{word.chinese}</span>
+                            <div className="mt-8 text-center text-slate-400 text-sm">
+                                已經到底了 (共 {vocabularyList.length} 個單字)
                             </div>
-                          </div>
-
-                          <button 
-                            onClick={() => speak(word.english)}
-                            className="ml-4 p-2 text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors active:scale-90"
-                          >
-                            <Volume2 size={20} />
-                          </button>
                         </div>
-                      ))}
+                        )}
                     </div>
-                    
-                    <div className="mt-8 text-center text-slate-400 text-sm">
-                      已經到底了 (共 {vocabularyList.length} 個單字)
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
+                </div>
+            );
         };
 
         const Quiz = ({ setMode, vocabularyList }) => {
-          const [questions, setQuestions] = useState([]);
-          const [currentQIndex, setCurrentQIndex] = useState(0);
-          const [score, setScore] = useState(0);
-          const [showResult, setShowResult] = useState(false);
-          const [selectedOption, setSelectedOption] = useState(null);
-          const [isAnswerChecked, setIsAnswerChecked] = useState(false);
+            const [questions, setQuestions] = useState([]);
+            const [currentQIndex, setCurrentQIndex] = useState(0);
+            const [score, setScore] = useState(0);
+            const [showResult, setShowResult] = useState(false);
+            const [selectedOption, setSelectedOption] = useState(null);
+            const [isAnswerChecked, setIsAnswerChecked] = useState(false);
 
-          useEffect(() => {
-            initGame();
-          }, [vocabularyList]);
+            useEffect(() => {
+                initGame();
+            }, [vocabularyList]);
 
-          const initGame = () => {
-            setScore(0);
-            setCurrentQIndex(0);
-            setShowResult(false);
-            setSelectedOption(null);
-            setIsAnswerChecked(false);
+            const initGame = () => {
+                setScore(0);
+                setCurrentQIndex(0);
+                setShowResult(false);
+                setSelectedOption(null);
+                setIsAnswerChecked(false);
 
-            const shuffled = [...vocabularyList].sort(() => 0.5 - Math.random());
-            const selectedQuestions = shuffled.slice(0, 10).map(q => {
-              const otherWords = vocabularyList.filter(w => w.id !== q.id);
-              const wrongOptions = otherWords.sort(() => 0.5 - Math.random()).slice(0, 3).map(w => w.english);
-              const options = [...wrongOptions, q.english].sort(() => 0.5 - Math.random());
-              return {
-                ...q,
-                options
-              };
-            });
-            setQuestions(selectedQuestions);
-          }
-
-          const handleOptionClick = (option) => {
-            if (isAnswerChecked) return;
-            setSelectedOption(option);
-            setIsAnswerChecked(true);
-
-            if (option === questions[currentQIndex].english) {
-              setScore(score + 1);
+                const shuffled = [...vocabularyList].sort(() => 0.5 - Math.random());
+                const selectedQuestions = shuffled.slice(0, 10).map(q => {
+                    const otherWords = vocabularyList.filter(w => w.id !== q.id);
+                    const wrongOptions = otherWords.sort(() => 0.5 - Math.random()).slice(0, 3).map(w => w.english);
+                    const options = [...wrongOptions, q.english].sort(() => 0.5 - Math.random());
+                    return { ...q, options };
+                });
+                setQuestions(selectedQuestions);
             }
-          };
 
-          const handleNext = () => {
-            if (currentQIndex < questions.length - 1) {
-              setCurrentQIndex(currentQIndex + 1);
-              setSelectedOption(null);
-              setIsAnswerChecked(false);
-            } else {
-              setShowResult(true);
+            const handleOptionClick = (option) => {
+                if (isAnswerChecked) return;
+                setSelectedOption(option);
+                setIsAnswerChecked(true);
+
+                if (option === questions[currentQIndex].english) {
+                    setScore(score + 1);
+                }
+            };
+
+            const handleNext = () => {
+                if (currentQIndex < questions.length - 1) {
+                    setCurrentQIndex(currentQIndex + 1);
+                    setSelectedOption(null);
+                    setIsAnswerChecked(false);
+                } else {
+                    setShowResult(true);
+                }
+            };
+
+            if (questions.length === 0) return <div className="flex-1 flex items-center justify-center text-emerald-600">準備題目中...</div>;
+
+            if (showResult) {
+                const percentage = Math.round((score / questions.length) * 100);
+                return (
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 animate-in zoom-in duration-500 overflow-y-auto">
+                        <div className="w-32 h-32 bg-emerald-100 rounded-full flex items-center justify-center mb-6 text-emerald-600 relative shrink-0">
+                            <Trophy size={64} />
+                            <div className="absolute -top-2 -right-2 bg-yellow-400 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold border-2 border-white">
+                                {score}
+                            </div>
+                        </div>
+                        <h2 className="text-3xl font-bold text-slate-800 mb-2">測驗完成！</h2>
+                        <p className="text-slate-500 mb-8">你的得分是 {score} / {questions.length} ({percentage}%)</p>
+                        
+                        <div className="w-full max-w-xs grid gap-4">
+                            <button 
+                                onClick={() => setMode('menu')}
+                                className="w-full py-4 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300 transition-colors active:scale-98"
+                            >
+                                回到單元選單
+                            </button>
+                            <button 
+                                onClick={initGame}
+                                className="w-full py-4 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors active:scale-98 shadow-lg shadow-emerald-200"
+                            >
+                                再玩一次
+                            </button>
+                        </div>
+                    </div>
+                );
             }
-          };
 
-          if (questions.length === 0) return <div className="flex-1 flex items-center justify-center text-emerald-600">準備題目中...</div>;
+            const currentQ = questions[currentQIndex];
 
-          if (showResult) {
-            const percentage = Math.round((score / questions.length) * 100);
             return (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 animate-[zoomIn_0.5s_ease-out] overflow-y-auto">
-                <div className="w-32 h-32 bg-emerald-100 rounded-full flex items-center justify-center mb-6 text-emerald-600 relative shrink-0">
-                  <Trophy size={64} />
-                  <div className="absolute -top-2 -right-2 bg-yellow-400 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold border-2 border-white">
-                    {score}
-                  </div>
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-8">
+                    <div className="max-w-md mx-auto w-full h-full flex flex-col">
+                        <div className="flex justify-between items-center mb-6 text-sm font-medium text-slate-500 shrink-0">
+                            <span>Question {currentQIndex + 1}/{questions.length}</span>
+                            <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded">Score: {score}</span>
+                        </div>
+
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-6 text-center flex-col justify-center items-center shrink-0 min-h-[160px] flex">
+                            <span className="text-sm text-slate-400 mb-2 uppercase tracking-wider">翻譯這個單字</span>
+                            <h2 className="text-3xl sm:text-4xl font-bold text-slate-800 mb-2">{currentQ.chinese}</h2>
+                            {currentQ.part && <span className="text-sm bg-slate-100 text-slate-500 px-2 py-1 rounded">{currentQ.part}</span>}
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 mb-6 flex-1 content-start">
+                            {currentQ.options.map((option, idx) => {
+                                let btnClass = "p-4 rounded-xl text-lg font-medium border-2 transition-all text-left flex justify-between items-center active:scale-[0.99] ";
+                                
+                                if (isAnswerChecked) {
+                                    if (option === currentQ.english) {
+                                        btnClass += "bg-emerald-100 border-emerald-500 text-emerald-700";
+                                    } else if (option === selectedOption) {
+                                        btnClass += "bg-red-100 border-red-500 text-red-700";
+                                    } else {
+                                        btnClass += "bg-white border-slate-100 text-slate-300 opacity-60";
+                                    }
+                                } else {
+                                    btnClass += "bg-white border-slate-200 text-slate-700 hover:border-emerald-400 hover:bg-emerald-50";
+                                }
+
+                                return (
+                                    <button 
+                                        key={idx}
+                                        onClick={() => handleOptionClick(option)}
+                                        disabled={isAnswerChecked}
+                                        className={btnClass}
+                                    >
+                                        {option}
+                                        {isAnswerChecked && option === currentQ.english && <Check size={20} />}
+                                        {isAnswerChecked && option === selectedOption && option !== currentQ.english && <X size={20} />}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <button 
+                            onClick={handleNext}
+                            disabled={!isAnswerChecked}
+                            className={`w-full py-4 rounded-xl font-bold text-lg transition-all shrink-0 mb-4 ${
+                                isAnswerChecked 
+                                ? 'bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 active:scale-98' 
+                                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                            }`}
+                        >
+                            {currentQIndex === questions.length - 1 ? '查看結果' : '下一題'}
+                        </button>
+                    </div>
                 </div>
-                <h2 className="text-3xl font-bold text-slate-800 mb-2">測驗完成！</h2>
-                <p className="text-slate-500 mb-8">你的得分是 {score} / {questions.length} ({percentage}%)</p>
-                
-                <div className="w-full max-w-xs grid gap-4">
-                  <button 
-                    onClick={() => setMode('menu')}
-                    className="w-full py-4 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300 transition-colors active:scale-98"
-                  >
-                    回到單元選單
-                  </button>
-                  <button 
-                    onClick={initGame}
-                    className="w-full py-4 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors active:scale-98 shadow-lg shadow-emerald-200"
-                  >
-                    再玩一次
-                  </button>
-                </div>
-              </div>
             );
-          }
-
-          const currentQ = questions[currentQIndex];
-
-          return (
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-8">
-              <div className="max-w-md mx-auto w-full h-full flex flex-col">
-                <div className="flex justify-between items-center mb-6 text-sm font-medium text-slate-500 shrink-0">
-                  <span>Question {currentQIndex + 1}/{questions.length}</span>
-                  <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded">Score: {score}</span>
-                </div>
-
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-6 text-center flex-col justify-center items-center shrink-0 min-h-[160px] flex">
-                  <span className="text-sm text-slate-400 mb-2 uppercase tracking-wider">翻譯這個單字</span>
-                  <h2 className="text-3xl sm:text-4xl font-bold text-slate-800 mb-2">{currentQ.chinese}</h2>
-                  {currentQ.part && <span className="text-sm bg-slate-100 text-slate-500 px-2 py-1 rounded">{currentQ.part}</span>}
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 mb-6 flex-1 content-start">
-                  {currentQ.options.map((option, idx) => {
-                    let btnClass = "p-4 rounded-xl text-lg font-medium border-2 transition-all text-left flex justify-between items-center active:scale-[0.99] ";
-                    
-                    if (isAnswerChecked) {
-                      if (option === currentQ.english) {
-                        btnClass += "bg-emerald-100 border-emerald-500 text-emerald-700"; 
-                      } else if (option === selectedOption) {
-                        btnClass += "bg-red-100 border-red-500 text-red-700"; 
-                      } else {
-                        btnClass += "bg-white border-slate-100 text-slate-300 opacity-60"; 
-                      }
-                    } else {
-                      btnClass += "bg-white border-slate-200 text-slate-700 hover:border-emerald-400 hover:bg-emerald-50";
-                    }
-
-                    return (
-                      <button 
-                        key={idx}
-                        onClick={() => handleOptionClick(option)}
-                        disabled={isAnswerChecked}
-                        className={btnClass}
-                      >
-                        {option}
-                        {isAnswerChecked && option === currentQ.english && <Check size={20} />}
-                        {isAnswerChecked && option === selectedOption && option !== currentQ.english && <X size={20} />}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <button 
-                  onClick={handleNext}
-                  disabled={!isAnswerChecked}
-                  className={`w-full py-4 rounded-xl font-bold text-lg transition-all shrink-0 mb-4 ${
-                    isAnswerChecked 
-                      ? 'bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 active:scale-98' 
-                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                  }`}
-                >
-                  {currentQIndex === questions.length - 1 ? '查看結果' : '下一題'}
-                </button>
-              </div>
-            </div>
-          );
         };
 
-        // 啟動程式
+        // --- 主程式 App ---
+        const App = () => {
+            const [currentLessonId, setCurrentLessonId] = useState(null); 
+            const [mode, setMode] = useState('menu'); 
+
+            const goHome = () => {
+                setMode('menu');
+                setCurrentLessonId(null);
+            };
+
+            const goMenu = () => {
+                setMode('menu');
+            };
+
+            return (
+                <div className="min-h-[100dvh] bg-slate-50 text-slate-800 font-sans selection:bg-emerald-100 flex justify-center">
+                    <div className="w-full max-w-xl bg-white shadow-2xl overflow-hidden flex flex-col min-h-[100dvh] border-x border-slate-100">
+                        <header className="bg-emerald-600 text-white p-4 shadow-md z-10 sticky top-0 shrink-0">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    {currentLessonId ? (
+                                        <button onClick={goHome} className="hover:bg-emerald-700 p-2 rounded-lg transition-colors active:scale-95">
+                                            <Library size={24} />
+                                        </button>
+                                    ) : (
+                                        <BookOpen size={24} className="ml-1"/>
+                                    )}
+                                    
+                                    <h1 className="text-lg font-bold truncate max-w-[200px] sm:max-w-[300px]">
+                                        {currentLessonId ? lessonsData[currentLessonId].title : "英語單字測驗"}
+                                    </h1>
+                                </div>
+                                
+                                {currentLessonId && mode !== 'menu' && (
+                                    <button 
+                                        onClick={goMenu}
+                                        className="p-2 hover:bg-emerald-700 rounded-full transition-colors active:scale-95"
+                                        title="回到單元選單"
+                                    >
+                                        <Home size={22} />
+                                    </button>
+                                )}
+                            </div>
+                            {currentLessonId && (
+                                <p className="text-emerald-100 text-xs mt-1 truncate pl-11">
+                                    {lessonsData[currentLessonId].subtitle}
+                                </p>
+                            )}
+                        </header>
+
+                        <main className="flex-1 flex flex-col relative overflow-hidden bg-slate-50/50">
+                            {!currentLessonId ? (
+                                <LessonSelector onSelect={setCurrentLessonId} />
+                            ) : (
+                                <>
+                                    {mode === 'menu' && <Menu setMode={setMode} lessonData={lessonsData[currentLessonId]} />}
+                                    {mode === 'flashcards' && <Flashcards vocabularyList={lessonsData[currentLessonId].words} />}
+                                    {mode === 'quiz' && <Quiz setMode={setMode} vocabularyList={lessonsData[currentLessonId].words} />}
+                                </>
+                            )}
+                        </main>
+                    </div>
+                </div>
+            );
+        };
+
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
