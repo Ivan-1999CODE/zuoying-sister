@@ -69,6 +69,59 @@
             Shuffle, GraduationCap, PenTool, Coffee, Keyboard, MousePointerClick
         } from 'lucide-react';
 
+        // --- 語音合成優化修正 (Fix for Android) ---
+        // 在 React 元件外部管理語音，確保全域可用
+        let availableVoices = [];
+        
+        const loadVoices = () => {
+            // 嘗試獲取瀏覽器的語音列表
+            const voices = window.speechSynthesis.getVoices();
+            if (voices.length > 0) {
+                availableVoices = voices;
+                console.log("Voices loaded:", voices.length);
+            }
+        };
+
+        // 第一次嘗試載入
+        loadVoices();
+
+        // Chrome/Android 需要監聽這個事件才能確保語音載入
+        if (window.speechSynthesis && window.speechSynthesis.onvoiceschanged !== undefined) {
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+        }
+
+        const speakText = (text) => {
+            if (!window.speechSynthesis) return;
+
+            // Android 上有時 cancel 會導致卡住，但在連點時還是需要 cancel
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            // 嘗試尋找最佳的英文語音
+            // Android 上的 Google 語音通常名稱包含 "English" 或 "Google"
+            let selectedVoice = availableVoices.find(v => 
+                (v.lang === 'en-US' || v.lang === 'en_US') && !v.name.includes("Network") // 避開網路語音，使用本地語音通常比較快
+            );
+
+            // 如果找不到完美的 en-US，找任何英文
+            if (!selectedVoice) {
+                selectedVoice = availableVoices.find(v => v.lang.includes('en'));
+            }
+
+            // 設定語音 (如果有找到)
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+            }
+
+            // 設定基本參數 (即便沒有 voice 物件，這行對某些瀏覽器也有效)
+            utterance.lang = 'en-US'; 
+            utterance.rate = 0.9;
+            utterance.pitch = 1;
+
+            window.speechSynthesis.speak(utterance);
+        };
+
         // --- 資料庫 (Unit 5 & Unit 6) ---
         const UNITS_DATA = {
         unit5: {
@@ -286,14 +339,7 @@
         return newArray;
         };
 
-        const speakText = (text) => {
-        // Cancel existing speech first
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'en-US';
-        utterance.rate = 0.9;
-        window.speechSynthesis.speak(utterance);
-        };
+        // speakText 已移至上方全域定義，這裡不需要重複定義
 
         // --- 共用樣式：遊戲風格按鈕 ---
         const GameButton = ({ children, onClick, color = "blue", className = "", disabled = false, active = false }) => {
