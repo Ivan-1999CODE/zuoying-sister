@@ -156,6 +156,7 @@
                 if(qType > 0.5) {
                      pool.push({ 
                         q: `${num} = ${tens[tenDigit-2]}-______`, 
+                        // 原本這裡是固定順序，現在後端顯示時會強制打亂，這裡保持生成邏輯即可
                         options: [ones[oneDigit-1], ones[(oneDigit+1)%9], ones[(oneDigit+2)%9]], 
                         ans: ones[oneDigit-1], 
                         hint: `${num} 的個位數是 ${ones[oneDigit-1]}`
@@ -741,6 +742,9 @@
             const handleAnswerClick = (l) => { if (feedback === 'correct') return; setCurrentLetters(prev => prev.filter(p => p.key !== l.key)); setPoolLetters(prev => [...prev, l]); };
 
             const checkAnswer = () => {
+                // 1. 新增：防止重複點擊加分
+                if (feedback === 'correct') return;
+
                 const currentItem = quizItems[currentQIndex];
                 const targetWord = currentItem.word.toLowerCase().replace(/[^a-z]/g, '');
                 const userWord = currentLetters.map(l => l.char).join('');
@@ -824,8 +828,9 @@
             const [spellingData, setSpellingData] = useState([]); // 新增：用於儲存過濾後的拼字資料
 
             const startChoiceQuiz = () => {
-                // 1. 準備單字題
-                const shuffledVocab = shuffleArray([...data]).slice(0, 10);
+                // 1. 準備單字題 (從 data 中隨機取 15 題，不包含文法)
+                // 2. 修改：增加題數至 15 題，並只使用單字/片語資料 (不再混合 grammarData)
+                const shuffledVocab = shuffleArray([...data]).slice(0, 15);
                 const vocabQuestions = shuffledVocab.map(target => {
                     const type = Math.random() > 0.5 ? 'en-to-ch' : 'ch-to-en';
                     const distractors = shuffleArray(data.filter(w => w.id !== target.id)).slice(0, 3);
@@ -845,27 +850,8 @@
                     };
                 });
 
-                // 2. 準備文法題 (從 grammarData 中取 5 題)
-                let grammarQuestions = [];
-                if (grammarData && grammarData.quiz) {
-                    const shuffledGrammar = shuffleArray([...grammarData.quiz]).slice(0, 5);
-                    grammarQuestions = shuffledGrammar.map(g => {
-                        return {
-                            questionText: g.q,
-                            correctId: g.ans, // 文法題直接用答案當 ID 比較
-                            options: g.options.map(opt => ({
-                                id: opt,
-                                text: opt,
-                                isCorrect: opt === g.ans
-                            })),
-                            hint: g.hint || "請選出正確答案",
-                            audio: null
-                        };
-                    });
-                }
-
-                // 3. 混合並隨機排序
-                const allQuestions = shuffleArray([...vocabQuestions, ...grammarQuestions]);
+                // 3. 隨機排序 (現在只有單字與片語)
+                const allQuestions = shuffleArray([...vocabQuestions]);
                 
                 setQuizData(allQuestions);
                 setCurrentQIndex(0);
@@ -925,7 +911,7 @@
                         {/* 選擇題 (大亂鬥) */}
                         <button onClick={startChoiceQuiz} className="w-full max-w-xs bg-white border-4 border-slate-200 p-5 rounded-3xl hover:border-sky-400 group transition-all shadow-sm hover:shadow-md text-left relative overflow-hidden">
                             <div className="absolute right-[-20px] top-[-20px] bg-sky-100 w-24 h-24 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
-                            <div className="relative z-10 flex items-center gap-4"><div className="bg-sky-500 text-white p-3 rounded-2xl"><MousePointerClick className="w-6 h-6" /></div><div><h3 className="text-lg font-black text-slate-800">選擇題大挑戰</h3><p className="text-xs text-slate-500 font-bold">單字 + 文法 混合測驗</p></div></div>
+                            <div className="relative z-10 flex items-center gap-4"><div className="bg-sky-500 text-white p-3 rounded-2xl"><MousePointerClick className="w-6 h-6" /></div><div><h3 className="text-lg font-black text-slate-800">選擇題大挑戰</h3><p className="text-xs text-slate-500 font-bold">單字 + 片語 測驗</p></div></div>
                         </button>
 
                         <div className="w-full max-w-xs space-y-3">
@@ -1100,7 +1086,16 @@
                 const targetSentence = currentQuestion.sentence.replace(/\s+([.!?])/g, '$1'); 
                 const userRawString = userSentence.map(w => w.text).join(' ');
                 const userCleanString = userRawString.replace(/\s+([.!?])/g, '$1');
-                if (userCleanString === targetSentence) { setFeedback('correct'); setScore(prev => prev + 20); speakText(currentQuestion.sentence); } else { setFeedback('wrong'); speakText("Oops"); }
+                if (userCleanString === targetSentence) { 
+                    // 1. 新增：防止重複點擊加分
+                    if (feedback === 'correct') return;
+                    setFeedback('correct'); 
+                    setScore(prev => prev + 20); 
+                    speakText(currentQuestion.sentence); 
+                } else { 
+                    setFeedback('wrong'); 
+                    speakText("Oops"); 
+                }
             };
             const nextQuestion = () => { if (currentIndex < questions.length - 1) { setCurrentIndex(prev => prev + 1); loadQuestion(questions[currentIndex + 1]); } else { setShowResult(true); } };
 
@@ -1181,9 +1176,20 @@
             const [selectedOption, setSelectedOption] = useState(null);
             const [quizList, setQuizList] = useState([]);
 
+            // 輔助函式：處理題庫資料，確保選項被打亂
+            const prepareQuizData = (rawList) => {
+                return rawList.map(item => ({
+                    ...item,
+                    options: shuffleArray([...item.options]) // 在這裡強制打亂選項
+                }));
+            };
+
             useEffect(() => {
-                // 文法挑戰：從題庫中隨機選 10 題
-                if (grammarData?.quiz) { setQuizList(shuffleArray([...grammarData.quiz]).slice(0, 10)); }
+                // 文法挑戰：從題庫中隨機選 10 題，並打亂選項
+                if (grammarData?.quiz) { 
+                    const raw = shuffleArray([...grammarData.quiz]).slice(0, 10);
+                    setQuizList(prepareQuizData(raw)); 
+                }
                 setMode('notes');
                 setCurrentQuizIndex(0);
                 setScore(0);
@@ -1202,7 +1208,9 @@
             };
 
             const restartQuiz = () => {
-                setQuizList(shuffleArray([...grammarData.quiz]).slice(0, 10));
+                // 重新挑戰時，再次隨機抽取並打亂選項
+                const raw = shuffleArray([...grammarData.quiz]).slice(0, 10);
+                setQuizList(prepareQuizData(raw));
                 setCurrentQuizIndex(0);
                 setScore(0);
                 setShowResult(false);
